@@ -1,0 +1,121 @@
+#include "include/config.h"
+#include "include/raylib.h"
+#include "include/raymath.h"
+#define RAYGUI_IMPLEMENTATION
+#include "raygui-4.0/src/raygui.h"
+#define gravity 0.3f
+#define jump -8.0f
+#define pipespeed 7
+#define pipegap 180
+
+typedef struct pipe
+{
+    Rectangle top;
+    Rectangle bottom;
+    bool passed;
+} pipe;
+
+int main()
+{
+    int wwidth = 1800;
+    int wheight = 900;
+    InitWindow(wwidth, wheight, "Flappy Bird - raylib");
+    SetTargetFPS(60);
+    int highscore = 0;
+    Vector2 birdy = {(float)wwidth/2, (float)wheight/2 };
+    float bird = 40.0;
+    float radi = 20.0;
+    float speed = 0.0;
+
+    pipe pipee;
+    float X = (float)wwidth;
+    float Y = (float)GetRandomValue(250, wheight - 250);
+    pipee.passed = false;
+
+    int score = 0;
+    bool gameover = false;
+
+    Texture2D flappibird = LoadTexture("./bird.png");
+
+    while (!WindowShouldClose())
+    {
+        if (!gameover && IsKeyPressed(KEY_SPACE))
+        {
+            speed = jump;
+        }
+        if (gameover && IsKeyPressed(KEY_ENTER))
+        {
+            birdy.y = (float)wheight / 2;
+            speed = 0.0;
+            X = (float)wwidth;
+            Y = (float)GetRandomValue(250, wheight - 250);
+            score = 0;
+            pipee.passed = false;
+            gameover = false;
+        }
+
+        if (!gameover)
+        {
+            speed += gravity;
+            birdy.y += speed;
+            X -= pipespeed;
+
+            if (X < -100)
+            {
+                X = (float)wwidth;
+                Y = (float)GetRandomValue(150, wheight - 150);
+                pipee.passed = false;
+            }
+
+            pipee.top = (Rectangle){X, 0, 80, Y - pipegap / 2.0f};
+            pipee.bottom = (Rectangle){
+                X,
+                Y + pipegap / 2.0f,
+                80,
+                (float)wheight - (Y + pipegap / 2.0f)};
+
+            if (!pipee.passed && (X + 80) < birdy.x)
+            {
+                score++;
+                pipee.passed = true;
+            if (score > highscore)
+                    highscore = score;
+            }
+
+            bool hittop = CheckCollisionCircleRec(birdy, radi, pipee.top);
+            bool hitbottom = CheckCollisionCircleRec(birdy, radi, pipee.bottom);
+            bool hitground = (birdy.y + radi >= wheight);
+            bool hitceiling = (birdy.y - radi <= 0);
+
+            if (hittop || hitbottom || hitground || hitceiling)
+            {
+                gameover = true;
+            }
+        }
+
+        BeginDrawing();
+        ClearBackground(SKYBLUE);
+
+        DrawRectangleRec(pipee.top, DARKBROWN);
+        DrawRectangleRec(pipee.bottom, DARKBROWN);
+
+        Rectangle dest = {birdy.x, birdy.y, bird, bird};
+        Vector2 origin = {bird/2, bird/2};
+
+        DrawTexturePro(flappibird, (Rectangle){0, 0, (float)flappibird.width, (float)flappibird.height}, dest, origin, 0.0f, WHITE);
+        DrawText(TextFormat("Score:%d", score), 20, 30, 35, BLACK);
+
+        if (gameover)
+        {
+            DrawRectangle(0.0, 0.0, wwidth, wheight, Fade(BLACK, 0.4f));
+            DrawText("GAME OVER", wwidth/2-120, wheight/2-80, 40, RED);
+            DrawText(TextFormat("Final Score:%d", score), wwidth/2 - 80, wheight/2-20, 25, WHITE);
+            DrawText(TextFormat("High Score:%d", highscore), wwidth/2-70, wheight/2+20, 20, WHITE);
+            DrawText("Press ENTER to Restart", wwidth/2-176, wheight/2+60, 28, BLACK);
+        }
+        EndDrawing();
+    }
+    UnloadTexture(flappibird);
+    CloseWindow();
+    return 0;
+}
